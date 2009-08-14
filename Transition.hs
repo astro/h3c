@@ -37,6 +37,7 @@ data LED = Both LEDID
          | Front LEDID
          | Back LEDID
            deriving (Ord, Eq)
+occludes_ l1 l2 = ((show l1) ++ " occludes " ++ (show l2) ++ " = " ++ (show $ l1 `occludes` l2)) `trace` l1 `occludes` l2
 occludes :: LED -> LED -> Bool
 (Both ALL) `occludes` _ = True
 (Front ALL) `occludes` (Front _) = True
@@ -61,9 +62,10 @@ s1 `ledappend` (s:s2) = (replaceOrAppend s1 s) `ledappend` s2
           hasColor [] _
               = False
           hasColor ((id1, color1):s) (id2, color2)
-              = if id1 `occludes` id2
+              = if id2 `occludes_` id1
                 then color1 == color2
                 else s `hasColor` (id2, color2)
+
 
 data Command = CmdC LED Color
              | CmdW Time
@@ -82,23 +84,28 @@ runTransition duration transition = compressWaits $ run 0 []
           run time states
               | time >= duration = []
               | otherwise = let newStates = iterate time
-                                allStates = states `ledappend` newStates
-                                allNewStates = rmPrefix states allStates
+                                allStates = states ++ newStates
+                                allNewStates = rmOcclusions allStates
                                 commands = map stateToCommand allNewStates
                                 commands' | commands == [] = [CmdW 10]
                                           | otherwise = commands
                                 time' = time + 10 * (fromIntegral $ length commands')
-                            in --("time'=" ++ (show time') ++
-                               -- "\nnewStates=" ++ (show newStates) ++
-                               -- "\nallStates=" ++ (show allStates)) `trace`
+                            in ("time=" ++ (show time) ++
+                                "\nnewStates=" ++ (show newStates) ++
+                                "\nallStates=" ++ (show allStates) ++
+                                "\nallNewStates=" ++ (show allNewStates)) `trace`
                                commands' ++ (run time' allStates)
 
           iterate :: Time -> [LEDState]
           iterate time = execState (runReaderT transition time) []
 
-          rmPrefix :: Eq a => [a] -> [a] -> [a]
-          rmPrefix [] xs = xs
-          rmPrefix (x1:xs') (x2:xs'') | x1 == x2 = rmPrefix xs' xs''
+          -- |Remove any LEDStates that are later overdrawn
+          rmOcclusions :: [LEDState] -> [LEDState]
+          rmOcclusions [] = []
+          rmOcclusions (ledstate@(led, _color):ledstates)
+                       | any (`occludes_` led) $
+                         map fst ledstates = rmOcclusions ledstates
+                       | otherwise = ledstate:rmOcclusions ledstates
 
           stateToCommand (led, color) = CmdC led color
 
