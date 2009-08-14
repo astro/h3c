@@ -1,5 +1,5 @@
 module Transition (Transition, runTransition, printCommands,
-                   at, during,
+                   at, during, foldAllLEDs,
                    light, LED(..), LEDID(..),
                    black, white, red, green, blue, color) where
 
@@ -48,6 +48,13 @@ occludes :: LED -> LED -> Bool
 l1 `occludes` l2 | l1 == l2 = True
 _ `occludes` _ = False
 
+foldAllLEDs :: (a -> LED -> Transition a)
+            -> a
+            -> Transition a
+foldAllLEDs f a = foldM f a $
+                  concat [[Front id, Back id]
+                          | id <- [A, B, C, D, E, F, G, H, I, J, K, L, M, N, O]]
+
 instance Show LED where
     show (Both ledid) = show ledid
     show (Front ledid) = "F" ++ (show ledid)
@@ -66,6 +73,22 @@ s1 `ledappend` (s:s2) = (replaceOrAppend s1 s) `ledappend` s2
                 then color1 == color2
                 else s `hasColor` (id2, color2)
 
+statesDifference :: [LEDState] -> [LEDState] -> [LEDState]
+statesDifference [] target = target
+statesDifference original target
+    = filter (\(target_led,target_color) ->
+                  any (\(original_led, original_color) ->
+                           let occluded = target_led `occludes_` original_led
+                               is_all = case original_led of
+                                          Both ALL -> True
+                                          Front ALL -> True
+                                          Back ALL = True
+                                          _ = False
+                           in if occluded
+                              then target_color /= original_color
+                              else True
+                      ) original
+             ) target
 
 data Command = CmdC LED Color
              | CmdW Time
@@ -83,18 +106,18 @@ runTransition duration transition = compressWaits $ run 0 []
     where run :: Time -> [LEDState] -> [Command]
           run time states
               | time >= duration = []
-              | otherwise = let newStates = iterate time
-                                allStates = states ++ newStates
-                                allNewStates = rmOcclusions allStates
-                                commands = map stateToCommand allNewStates
+              | otherwise = let newStates = rmOcclusions $ iterate time
+                                newStates' = states `statesDifference` newStates
+                                nextStates = rmOcclusions $ states ++ newStates'
+                                commands = map stateToCommand newStates'
                                 commands' | commands == [] = [CmdW 10]
                                           | otherwise = commands
                                 time' = time + 10 * (fromIntegral $ length commands')
                             in ("time=" ++ (show time) ++
+                                "\nstates=" ++ (show states) ++
                                 "\nnewStates=" ++ (show newStates) ++
-                                "\nallStates=" ++ (show allStates) ++
-                                "\nallNewStates=" ++ (show allNewStates)) `trace`
-                               commands' ++ (run time' allStates)
+                                "\ndiffs=" ++ (show $ states `statesDifference` newStates')) `trace`
+                               commands' ++ (run time' nextStates)
 
           iterate :: Time -> [LEDState]
           iterate time = execState (runReaderT transition time) []
