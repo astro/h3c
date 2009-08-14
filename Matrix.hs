@@ -61,21 +61,20 @@ runTransition duration transition = compressWaits $ run 0 []
     where run :: Time -> [LEDState] -> [Command]
           run time states
               | time >= duration = []
-              | otherwise = let newStates = ("iterated: " ++ (show  $ iterate time)) `trace` rmOcclusions $ iterate time
+              | otherwise = let newStates = rmOcclusions $ iterate time states
                                 newStates' = states `statesDifferences` newStates
-                                nextStates = rmOcclusions $ states ++ newStates'
-                                commands = map stateToCommand $ reverse newStates'
+                                nextStates = rmOcclusions $ newStates' ++ states
+                                commands = map stateToCommand newStates'
                                 commands' | commands == [] = [CmdW 10]
                                           | otherwise = commands
                                 time' = time + 10 * (fromIntegral $ length commands')
                             in ("time=" ++ (show time) ++
-                                "\nstates=" ++ (show states) ++
-                                "\nnewStates=" ++ (show newStates) ++
+                                "\niterated=" ++ (show $ iterate time states) ++
                                 "\nnextStates=" ++ (show $ nextStates)) `trace`
                                commands' ++ (run time' nextStates)
 
-          iterate :: Time -> [LEDState]
-          iterate time = execState (runReaderT transition time) []
+          iterate :: Time -> [LEDState] -> [LEDState]
+          iterate time = execState (runReaderT transition time)
 
           statesDifferences original target
               = filter (\(target_led, target_color) ->
@@ -103,7 +102,6 @@ at time transition = do now <- ask
                         when (now > time) transition
 during :: Time -> Time -> Transition () -> Transition ()
 during time1 time2 transition = do now <- ask
-                                   --(printf "%.2f =< %.2f < %.2f -> %s" time1 now time2 $ if ((time1 <= now) && (now < time2)) then "t" else "f") `trace`
                                    when ((time1 <= now) && (now < time2)) transition
 
 zoomTime :: Time -> Time -> Transition a -> Transition ()
@@ -114,16 +112,16 @@ zoomTime time1 time2 transition
               states <- get
               let states' :: [LEDState]
                   states' = execState (runReaderT transition zoomedTime) states
-              ("zoomed states: " ++ (show states')) `trace`
-                                                    put states'
+              put states'
 
 light :: LED -> Color -> Transition ()
 light led color
       = do states <- get
-           case states `colorInStates` led of
+           {-case states `colorInStates` led of
              Just color' | color == color' -> return ()
-             _ -> ("Putting " ++ (show (led, color))) `trace`
-                  put $ (led, color):states
+             _ -> --("Putting " ++ (show (led, color))) `trace`-}
+           ("putting " ++ (show $ (led, color)) ++ " in " ++ (show states)) `trace`
+                                                                            put $ (led, color):states
 
 putPixel :: Int -> Int -> Color -> Transition ()
 putPixel 0 0 = light D
