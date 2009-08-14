@@ -1,7 +1,9 @@
-import Transition
+import Matrix
+import Control.Monad
 
-main = printCommands $
-       runTransition 70 $
-       do light (Both ALL) white
-          during 30 60 $ do light (Both A) red
-          during 40 50 $ do light (Front A) blue
+main = putStrLn $ concat $ map show $
+       runTransition 5000 $
+       do forM allLEDs $ \led -> light led white
+          during 300 2500 $ do light A red
+          during 1900 3000 $ do light B blue
+          during 2200 2400 $ do light A green
