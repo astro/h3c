@@ -15,6 +15,8 @@ var positions = [
 	["K", "L", "M", "N", "O"]
 ];
 
+var code = null;
+
 // Start the simulation in endless loop
 function ddc_loop() {
 	ddc_running = true;
@@ -37,29 +39,36 @@ function ddc_start() {
 	ddc_running = true;
 	ddc_looping = false;
 	linenr = 0;
+	code = $("anim").value.toUpperCase().split("\n");
 	ddc_run();
 }
 
 function ddc_run() {
-	code = $("anim").value.toUpperCase().split("\n");
-	
-	while(code[linenr] != null) {
-		
+        if (code.length < 1)
+	  {
+	    code = null;
+	    if(ddc_looping) {
+	      window.setTimeout("ddc_run();", 10);
+	    }
+	    return;
+	  }
+
+
 		if(!ddc_running) return;
-		
+
 		// not needed chars filtering
 		var line = code[linenr].replace("\r");
-		
+
 		// set next line number (actual line is already fetched)
 		linenr++;
-		
+
 		// ignore empty lines
-		if(line.length == 0) continue;
-		
+  if(line.length == 0) { window.setTimeout("ddc_run();", 10); return; }
+
 		// ignore comments
-		if(line.substr(0, 1) == "#") continue;
-		if(line.substr(0, 2) == "//") continue;
-		
+  if(line.substr(0, 1) == "#")   {window.setTimeout("ddc_run();", 10);return; }
+  if(line.substr(0, 2) == "//") {window.setTimeout("ddc_run();", 10);return;}
+
 		// wait some time
 		if(line.substr(0, 1) == "W") {
 			// check valid time
@@ -68,26 +77,27 @@ function ddc_run() {
 				return;
 			}
 		}
-		
+
 		// fade or set
 		if(matches = line.match(/([CF])\s+([FB]?[123A-O]{1}|0|[FB]?ALL|[FB]?[123]?RND|RND1|RND2)\s+(#[0-9A-F]{6}|RND1|RND2|RND3|RGB1|RGB2)(?:\s+([0-9]{1,4}|RND))?/)) {
-			
+
 			// type: fade or set?
 			type = matches[1];
-			
+
 			// if fade: 3 parameter needed
 			if ( type == "F" && matches[4] == "" )
 			{
-				continue;
+  window.setTimeout("ddc_run();", 10);return;
+
 			}
-			
+
 			// position
 			pos = "";
 			temp_pos = matches[2];
-			
+
 			// Front or Back?
 			first = temp_pos.substr(0, 1);
-			if ( first == "F" || first == "B" ) {
+			if ( (first == "F" || first == "B") && temp_pos.length > 1  ) {
 				pos += first;
 				temp_pos = temp_pos.substr(1);
 			}
@@ -95,7 +105,7 @@ function ddc_run() {
 			else {
 				pos += "FB".substr(rand(0, 1), 1);
 			}
-			
+
 			mode = "0";
 			switch ( temp_pos ) {
 				// Only one C?
@@ -107,22 +117,22 @@ function ddc_run() {
 				case "RND":
 					pos += positions[mode][rand(0, positions[mode].length-1)];
 					break;
-				
-				case "RND1": 
+
+				case "RND1":
 					// make position
 					pos += "ABCDEFGHIJKLMNO".substr(rand(0, 14), 1);
 					break;
-					
-				case "RND2": 
+
+				case "RND2":
 					// make position including 0
 					pos += "ABCDEFGHIJKLMNO0".substr(rand(0, 15), 1);
 					break;
-					
+
 				default:
-					pos = temp_pos;
+					pos += temp_pos;
 					break;
 			}
-			
+
 			// make random color
 			switch ( matches[3] ) {
 				case "RND1":
@@ -130,7 +140,7 @@ function ddc_run() {
 					for(i = 0; i < 6; i++)
 						color += "0123456789ABCDEF".substr(rand(0, 15), 1);
 					break;
-					
+
 				case "RND2":
 					color = "#";
 					for(i = 0; i < 3; i++) {
@@ -139,7 +149,7 @@ function ddc_run() {
 						color += "0123456789ABCDEF".substr(temp % 16, 1);
 					}
 					break;
-					
+
 				case "RND3":
 					color = "#";
 					for(i = 0; i < 3; i++) {
@@ -148,13 +158,13 @@ function ddc_run() {
 						color += "0123456789ABCDEF".substr(temp % 16, 1);
 					}
 					break;
-					
+
 				case "RGB1":
 					color = "#";
 					temp = rand(0, 2);
 					color += "FF000000FF000000FF".substr(temp * 6, 6);
 					break;
-					
+
 				case "RGB2":
 					color = "#";
 					temp = rand(0, 5);
@@ -165,21 +175,17 @@ function ddc_run() {
 					color = matches[3];
 					break;
 			}
-			
+
 			// make random speed
 			speed = matches[4];
 			if(speed == "RND") {
 				speed = rand(0, 1000);
 			}
-			
+
 			// temp: set color direct
 			(type == "C" ) ? ddc_set_color(pos, color) : ddc_fade_color(pos, color, speed);
-		}
 	}
-	linenr = 0;
-	if(ddc_looping) {
-		window.setTimeout("ddc_run();", 0);
-	}
+  window.setTimeout("ddc_run();", 10);
 }
 
 // fade color
@@ -193,7 +199,7 @@ function ddc_fade_color(pos, color, speed) {
 		red = colors[1];
 		green = colors[2];
 		blue = color[3];
-		
+
 		start = "#";
 		start += "0123456789ABCDEF".substr((red - red % 16) / 16 % 16, 1);
 		start += "0123456789ABCDEF".substr(red % 16, 1);
@@ -212,7 +218,7 @@ function ddc_fade(pos, start, end, ms) {
 	red_start = "0123456789ABCDEF".indexOf(start.substr(1, 1)) * 16 + "0123456789ABCDEF".indexOf(start.substr(2, 1));
 	green_start = "0123456789ABCDEF".indexOf(start.substr(3, 1)) * 16 + "0123456789ABCDEF".indexOf(start.substr(4, 1));
 	blue_start = "0123456789ABCDEF".indexOf(start.substr(5, 1)) * 16 + "0123456789ABCDEF".indexOf(start.substr(6, 1));
-	
+
 	red_end = "0123456789ABCDEF".indexOf(end.substr(1, 1)) * 16 + "0123456789ABCDEF".indexOf(end.substr(2, 1));
 	green_end = "0123456789ABCDEF".indexOf(end.substr(3, 1)) * 16 + "0123456789ABCDEF".indexOf(end.substr(4, 1));
 	blue_end = "0123456789ABCDEF".indexOf(end.substr(5, 1)) * 16 + "0123456789ABCDEF".indexOf(end.substr(6, 1));
@@ -220,7 +226,7 @@ function ddc_fade(pos, start, end, ms) {
 	red = Math.ceil(red_start + (red_end - red_start) / (ms / stepping));
 	green = Math.ceil(green_start + (green_end - green_start) / (ms / stepping));
 	blue = Math.ceil(blue_start + (blue_end - blue_start) / (ms / stepping));
-	
+
 	color = "#";
 	color += "0123456789ABCDEF".substr((red - red % 16) / 16 % 16, 1);
 	color += "0123456789ABCDEF".substr(red % 16, 1);
@@ -228,13 +234,13 @@ function ddc_fade(pos, start, end, ms) {
 	color += "0123456789ABCDEF".substr(green % 16, 1);
 	color += "0123456789ABCDEF".substr((blue - blue % 16) / 16 % 16, 1);
 	color += "0123456789ABCDEF".substr(blue % 16, 1);
-	
+
 	ms = ms - stepping;
 	if(ms < 0) return;
 
 	ddc_set_color(pos, color);
 	//alert(start + "->" + color + "->" + end);
-	
+
 	window.setTimeout("ddc_fade('" + pos + "', '" + color + "', '" + end + "', " + ms + ");", stepping);
 }
 
@@ -248,22 +254,22 @@ function ddc_set_color(pos, color) {
 				item = "ALL";
 			}
 			switch ( item.length ) {
-				case 3: 
+				case 3:
 					//    ALL  All front+back
-				case 1: 
+				case 1:
 					//    1    full C1 front+back
 					//    2    full C2 front+back
 					//    3    full C3 front+back
 					//    A-O  front+back
 					ddc_set_color(["F"+item, "B"+item], color);
 					break;
-					
-				case 4: 
+
+				case 4:
 					//    FALL    All front
 					//    BALL    All back
 					ddc_set_color(positions[0].map(function(x) { return item.substr(0, 1)+x; }), color);
 					break;
-				case 2: 
+				case 2:
 					//    F%      front %
 					//    B%      back %
 					switch ( item.substr(1) ) {
@@ -276,7 +282,7 @@ function ddc_set_color(pos, color) {
 						case "3":
 							//    F3    full C3 front
 							//    B3    full C3 back
-							ddc_set_color(positions[item.substr(1)].map(function(x) { return item.substr(0, 1)+x; }), color);
+					  ddc_set_color(positions[item.substr(1)].map(function(x) { return item.substr(0, 1)+x; }), color);
 							break;
 
 						default:
@@ -287,12 +293,12 @@ function ddc_set_color(pos, color) {
 					}
 					break;
 			}
-			
+
 		}
 	}
 	else {
 		ddc_set_color(new Array(pos), color);
-	} 
+	}
 }
 
 // Stop the simulation
