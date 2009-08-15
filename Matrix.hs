@@ -1,6 +1,6 @@
 module Matrix (
-               Time, Color, black, white, red, green, blue, color,
-               Transition, LED(..), getTime, allLEDs, runTransition, during, at, zoomTime,
+               Time, Color(..), black, white, red, green, yellow, blue, color, colorAdd,
+               Transition, LED(..), getTime, getColorAt, allLEDs, runTransition, during, at, zoomTime,
                light, putPixel, allLEDs
               ) where
 
@@ -22,11 +22,15 @@ instance Show Color where
               to_val c | c > 1.0 = 255
                        | c < 0.0 = 0
                        | otherwise = truncate $ c * 255.0
+colorAdd (Color (r, g, b)) (Color (r', g', b'))
+    = Color ((r + r'), (g + g'), (b + b'))
+
 black = Color (0, 0, 0)
 white = Color (1, 1, 1)
 red = Color (1, 0, 0)
 green = Color (0, 1, 0)
 blue = Color (0, 0, 1)
+yellow = Color (1, 1, 0)
 color r g b = Color (r, g, b)
 
 data LED = A | B | C | D | E | F | G | H | I | J | K | L | M | N | O
@@ -56,6 +60,10 @@ getTime :: Transition Time
 getTime = do now <- ask
              return now
 
+getColorAt :: LED -> Transition (Maybe Color)
+getColorAt led = do states <- get
+                    return $ colorInStates states led
+
 runTransition :: Time -> Transition a -> [Command]
 runTransition duration transition = compressWaits $ run 0 []
     where run :: Time -> [LEDState] -> [Command]
@@ -68,10 +76,7 @@ runTransition duration transition = compressWaits $ run 0 []
                                 commands' | commands == [] = [CmdW 10]
                                           | otherwise = commands
                                 time' = time + 10 * (fromIntegral $ length commands')
-                            in ("time=" ++ (show time) ++
-                                "\niterated=" ++ (show $ iterate time states) ++
-                                "\nnextStates=" ++ (show $ nextStates)) `trace`
-                               commands' ++ (run time' nextStates)
+                            in commands' ++ (run time' nextStates)
 
           iterate :: Time -> [LEDState] -> [LEDState]
           iterate time = execState (runReaderT transition time)
@@ -117,11 +122,9 @@ zoomTime time1 time2 transition
 light :: LED -> Color -> Transition ()
 light led color
       = do states <- get
-           {-case states `colorInStates` led of
+           case states `colorInStates` led of
              Just color' | color == color' -> return ()
-             _ -> --("Putting " ++ (show (led, color))) `trace`-}
-           ("putting " ++ (show $ (led, color)) ++ " in " ++ (show states)) `trace`
-                                                                            put $ (led, color):states
+             _ -> put $ (led, color):states
 
 putPixel :: Int -> Int -> Color -> Transition ()
 putPixel 0 0 = light D
