@@ -1,5 +1,5 @@
 module Matrix (
-               Time, Color(..), black, white, red, green, yellow, blue, color, colorAdd,
+               Time, Color(..), black, white, red, green, yellow, blue, color, colorAdd, mixColor,
                Transition, LED(..), getTime, getColorAt, allLEDs, runTransition, during, at, zoomTime,
                light, putPixel, allLEDs
               ) where
@@ -32,6 +32,10 @@ green = Color (0, 1, 0)
 blue = Color (0, 0, 1)
 yellow = Color (1, 1, 0)
 color r g b = Color (r, g, b)
+mixColor :: Double -> Color -> Color -> Color
+mixColor alpha (Color (r, g, b)) (Color (r', g', b'))
+          = Color (r * alpha + r' * alpha', g * alpha + g' * alpha', b * alpha + b' * alpha')
+    where alpha' = 1.0 - alpha
 
 data LED = A | B | C | D | E | F | G | H | I | J | K | L | M | N | O
          deriving (Show, Eq)
