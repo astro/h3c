@@ -100,9 +100,9 @@ display appstate = do
                       cube 2 (-1) 0 1 1 1
       Vector3 rx ry rz = appRotation appstate
   putStrLn $ "rotation=" ++ (show $ appRotation appstate)
-  rotate (20 * pi * ry) $ Vector3 1.0 0 0
-  rotate (20 * pi * rx) $ Vector3 0 1.0 0
-  rotate (20 * pi * rz) $ Vector3 0 0 1.0
+  rotate (180 * ry) $ Vector3 1.0 0 0
+  rotate (180 * rx) $ Vector3 0 1.0 0
+  rotate (180 * rz) $ Vector3 0 0 1.0
   -- 1st C
   drawC (-4) 0 (-1)
   -- 2nd C
