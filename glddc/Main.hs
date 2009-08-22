@@ -70,7 +70,7 @@ display :: AppState -> IO ()
 display appstate = do
   clearDepth $= 1.0
   clear [ColorBuffer, DepthBuffer]
-  --cullFace $= Just Front
+  cullFace $= Just Back
   depthFunc $= Just Less
   shadeModel $= Smooth
   hint PerspectiveCorrection $= Nicest
