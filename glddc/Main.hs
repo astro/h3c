@@ -146,9 +146,6 @@ keyboardMouse _ _ modifiers pos appstate
 main = do 
   (progname, _) <- getArgsAndInitialize
   initialDisplayMode $= [DoubleBuffered, WithDepthBuffer]
-  initialDisplayCapabilities $= [ With  DisplayRGB,
-                                  Where DisplayDepth IsAtLeast 24,
-                                  With  DisplayDouble ]
 
   createWindow "Die Drei C"
   let appstate = AppState { appWindowSize = (Size 400 300),
