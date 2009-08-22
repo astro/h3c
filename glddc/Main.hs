@@ -5,7 +5,6 @@ import Graphics.UI.GLUT
 import Data.IORef
 
 data AppState = AppState {
-      appWindowSize :: Size,
       appLastMousePosition :: Maybe Position,
       appRotating :: Bool,
       appRotation :: Vector3 GLfloat
@@ -79,7 +78,9 @@ display appstate = do
 
   matrixMode $= Projection
   loadIdentity
-  perspective (45) 1.333 1 50
+  Size w h <- get windowSize
+  let aspect = fromIntegral w / fromIntegral h
+  perspective 45 aspect 1 100
 
   matrixMode $= Modelview 0
   loadIdentity
@@ -111,24 +112,22 @@ display appstate = do
   flush
   swapBuffers
 
-reshape :: Size -> AppState -> IO AppState
-reshape s@(Size w h) appstate = do
+reshape :: Size -> IO ()
+reshape s = do
   viewport $= (Position 0 0, s)
   postRedisplay Nothing
-  return appstate { appWindowSize = s }
 
 mouseMotion :: Position -> AppState -> IO AppState
 mouseMotion pos@(Position x y) appstate
-    | appRotating appstate == True = let Just (Position x' y') = appLastMousePosition appstate
-                                         Vector3 rx ry rz = appRotation appstate
-                                         Size w h = appWindowSize appstate
-                                         rx' = rx + fromIntegral (x' - x) / fromIntegral w
-                                         ry' = ry + fromIntegral (y' - y) / fromIntegral h
-                                         rotation' = Vector3 rx' ry' rz
-                                     in do
-                                       postRedisplay Nothing
-                                       return appstate { appLastMousePosition = Just pos,
-                                                         appRotation = rotation' }
+    | appRotating appstate == True = do Size w h <- get windowSize
+                                        let Just (Position x' y') = appLastMousePosition appstate
+                                            Vector3 rx ry rz = appRotation appstate
+                                            rx' = rx + fromIntegral (x' - x) / fromIntegral w
+                                            ry' = ry + fromIntegral (y' - y) / fromIntegral h
+                                            rotation' = Vector3 rx' ry' rz
+                                        postRedisplay Nothing
+                                        return appstate { appLastMousePosition = Just pos,
+                                                          appRotation = rotation' }
     | otherwise = return appstate
 
 keyboardMouse :: Key -> KeyState -> Modifiers -> Position -> AppState -> IO AppState
@@ -148,15 +147,14 @@ main = do
   initialDisplayMode $= [DoubleBuffered, WithDepthBuffer]
 
   createWindow "Die Drei C"
-  let appstate = AppState { appWindowSize = (Size 400 300),
-                            appLastMousePosition = Nothing,
+  let appstate = AppState { appLastMousePosition = Nothing,
                             appRotating = False,
                             appRotation = Vector3 0 0 0
                           }
   appstateRef <- newIORef appstate
 
   displayCallback $= (appFun appstateRef display)
-  reshapeCallback $= Just (appFun appstateRef . reshape)
+  reshapeCallback $= Just reshape
   keyboardMouseCallback $= Just (\k ks m p -> appFun appstateRef $ keyboardMouse k ks m p)
   motionCallback $= Just (appFun appstateRef . mouseMotion)
   mainLoop
