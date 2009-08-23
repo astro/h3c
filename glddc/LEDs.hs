@@ -1,7 +1,6 @@
 module LEDs where
 
-import Data.Map (Map)
-import qualified Data.Map as Map
+import Data.Map hiding (map, filter)
 import Color
 
 data LEDState = Lit Color
@@ -22,7 +21,14 @@ light leds ledid color
             ) leds $ normalizeLEDs ledid
 
 normalizeLEDs :: LEDID -> [LEDID]
-normalizeLEDs ledid@[fb, _] | fb == 'F' || fb == 'B' = [ledid]
-normalizeLEDs [ledid] = [['F', ledid], ['B', ledid]]
-normalizeLEDs "ALL" = concat $ map normalizeLEDs $ map (:[]) ['A'..'O']
-normalizeLEDs (fb:"ALL") | fb == 'F' || fb == 'B' = concat $ map normalizeLEDs $ map (fb::[]) ['A'..'O']
+-- a letter A-O
+normalizeLEDs [ledid] | ledid `elem` ['A'..'O'] = [['F', ledid], ['B', ledid]]
+-- only Front or Back
+normalizeLEDs (fb:ledid)
+    | length ledid > 0 && (fb == 'F' || fb == 'B')
+        = filter ((== fb) . head) $ normalizeLEDs ledid
+normalizeLEDs ledid = concat $ map normalizeLEDs $ map (:[]) leds
+    where leds | ledid == "ALL" = ['A'..'O']
+               | ledid == "1" = ['A'..'E']
+               | ledid == "2" = ['F'..'J']
+               | ledid == "3" = ['K'..'O']
