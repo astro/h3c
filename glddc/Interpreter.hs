@@ -10,6 +10,7 @@ data Interpreter = Interpreter { iScript :: [Command],
                                  iRemaining :: [Command],
                                  iLastUpdate :: Integer,
                                  iLEDs :: LEDs.LEDs }
+                   deriving (Show, Eq)
 
 new :: FilePath -> IO Interpreter
 new path = do commands <- parse path
@@ -20,17 +21,18 @@ new path = do commands <- parse path
 
 update :: Interpreter -> IO Interpreter
 update i = do now <- getTimeStep
-              return $
-                     case iRemaining i of
-                       [] ->
-                           i { iRemaining = iScript i,
+              case iRemaining i of
+                [] ->
+                    return i { iRemaining = iScript i,
                                iLastUpdate = now }
-                       _ ->
-                           let catchUp i'
-                                   | iRemaining i' == [] = i'
-                                   | iLastUpdate i' < now = catchUp $ step i'
-                                   | otherwise = i'
-                           in catchUp i
+                _ ->
+                    let catchUp i'
+                            | iRemaining i' == [] = i'
+                            | iLastUpdate i' < now = catchUp $ step i'
+                            | otherwise = i'
+                    in do let i' = catchUp i
+                          putStrLn $ "i': " ++ (show $ iLEDs i')
+                          return i'
 
 step :: Interpreter -> Interpreter
 step i = let i' = i { iLastUpdate = iLastUpdate i + 10,

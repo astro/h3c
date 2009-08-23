@@ -1,10 +1,11 @@
-module LEDs (LEDID, LEDs, new, light, getColor) where
+module LEDs {-(LEDID, LEDs, new, light, getColor)-} where
 
 import Prelude hiding (lookup)
 import Data.Map hiding (map, filter)
 import Color
 
 data LEDState = Lit Color
+              deriving (Show, Eq)
 
 type LEDID = String
 type LEDs = Map LEDID LEDState

@@ -18,7 +18,8 @@ clamp (Color r g b)
 
 mix :: Double -> Color -> Color -> Color
 mix alpha (Color r g b) (Color r' g' b')
-    = Color (alpha * r + alpha' * r) (alpha * g + alpha' * g') (alpha * b + alpha' * b')
+    | alpha >= 0 && alpha <= 1
+        = clamp $ Color (alpha * r + alpha' * r) (alpha * g + alpha' * g') (alpha * b + alpha' * b')
     where alpha' = 1 - alpha
 
 instance Show Color where

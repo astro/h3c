@@ -7,6 +7,7 @@ import Data.IORef
 import Control.Monad.Reader
 import qualified Interpreter as I
 import Color (mix, black, Color(Color))
+import Debug.Trace
 
 data AppState = AppState {
       appLastMousePosition :: Maybe Position,
@@ -34,6 +35,7 @@ cube :: GLfloat -> GLfloat -> GLfloat
 cube x y z w h d = do
   colorAt <- ask
   let v x y z = do color $ colorAt x y z
+                   putStrLn $ "v " ++ (show (x,y,z))
                    vertex (Vertex3 x y z)
   lift $ renderPrimitive Quads $ do
                      -- Front
@@ -114,10 +116,10 @@ display appstate = do
                             2 -> ['F'..'J']
                             3 -> ['K'..'O']
                 in [([fb, id], (x, y, z))
-                    | (fb, z) <- [('F', 0), ('B', (-1))],
-                      (id, (x, y)) <- zip ids [(2.5, 0.5), (1.5, 0.5),
-                                               (1.5, 1.5),
-                                               (1.5, 2.5), (2.5, 2.5)]]
+                    | (fb, z) <- [('F', 1), ('B', 0)],
+                      (id, (x, y)) <- zip ids [(2.5, (-0.5)), (0.5, (-0.5)),
+                                               (0.5, 1.0),
+                                               (0.5, 2.5), (2.5, 2.5)]]
       cLightColors :: Int -> [((GLfloat, GLfloat, GLfloat)  -- ^light coordinates
                               ,Color                        -- ^light color
                               )]
@@ -130,14 +132,22 @@ display appstate = do
                             nearLights = map (\((lx, ly, lz), color) ->
                                                   let distance = sqrt ((x - lx) ** 2 +
                                                                        (y - ly) ** 2 +
-                                                                       (z - lz))
-                                                      nearness = 1 / distance
+                                                                       (z - lz) ** 2)
+                                                      nearness | distance > 0 = 1 / distance
                                                   in (nearness, color)
                                              ) $ cLightColors n
                             totalNearness = sum $ map fst nearLights
-                        in colorToGL $
+                        in ("totalNearness = " ++ (show totalNearness)) `trace` colorToGL $
                            foldl (\color' (nearness, color) ->
-                                      mix (realToFrac $ nearness / totalNearness) color color'
+                                      ("mix " ++
+                                       (show $ realToFrac $ nearness / totalNearness) ++
+                                       " " ++
+                                       (show color) ++
+                                       " " ++
+                                       (show color') ++
+                                       " = " ++
+                                       (show $ mix (realToFrac $ nearness / totalNearness) color color')) `trace`
+                                         mix (realToFrac $ nearness / totalNearness) color color'
                                  ) black nearLights
       drawC :: Int -> IO ()
       drawC n = preservingMatrix $ do
