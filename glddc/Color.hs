@@ -1,4 +1,4 @@
-module Color (Color, clamp, parseColor) where
+module Color (Color(Color), black, clamp, mix, parseColor) where
 
 import Text.Printf
 import Data.Char (ord)
@@ -7,12 +7,19 @@ import Debug.Trace
 data Color = Color Double Double Double
     deriving (Eq)
 
+black = Color 0 0 0
+
 clamp :: Color -> Color
 clamp (Color r g b)
     = Color (clamp' r) (clamp' g) (clamp' b)
     where clamp' a | a < 0 = 0
                    | a > 1 = 1
                    | otherwise = a
+
+mix :: Double -> Color -> Color -> Color
+mix alpha (Color r g b) (Color r' g' b')
+    = Color (alpha * r + alpha' * r) (alpha * g + alpha' * g') (alpha * b + alpha' * b')
+    where alpha' = 1 - alpha
 
 instance Show Color where
     show color

@@ -1,5 +1,6 @@
-module LEDs where
+module LEDs (LEDID, LEDs, new, light, getColor) where
 
+import Prelude hiding (lookup)
 import Data.Map hiding (map, filter)
 import Color
 
@@ -32,3 +33,8 @@ normalizeLEDs ledid = concat $ map normalizeLEDs $ map (:[]) leds
                | ledid == "1" = ['A'..'E']
                | ledid == "2" = ['F'..'J']
                | ledid == "3" = ['K'..'O']
+
+getColor :: LEDID -> LEDs -> Color
+getColor ledid leds = case lookup ledid leds of
+                        Nothing -> black
+                        Just (Lit color) -> color

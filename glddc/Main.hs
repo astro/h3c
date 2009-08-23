@@ -1,10 +1,12 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 
-import Graphics.Rendering.OpenGL
-import Graphics.UI.GLUT
+import Graphics.Rendering.OpenGL hiding (Color)
+import qualified Graphics.Rendering.OpenGL as GL (Color3(Color3))
+import Graphics.UI.GLUT hiding (Color)
 import Data.IORef
 import Control.Monad.Reader
 import qualified Interpreter as I
+import Color (mix, black, Color(Color))
 
 data AppState = AppState {
       appLastMousePosition :: Maybe Position,
@@ -65,8 +67,16 @@ cube x y z w h d = do
                      v (x + w) (y + h) (z + d)
                      v (x + w) (y + h) z
 
+colorToGL :: Color -> GL.Color3 GLfloat
+colorToGL (Color r g b)
+    = let r' = realToFrac r
+          g' = realToFrac g
+          b' = realToFrac b
+      in GL.Color3 r' g' b'
+
 display :: AppState -> IO ()
 display appstate = do
+  -- Setup
   clearDepth $= 1.0
   clear [ColorBuffer, DepthBuffer]
   cullFace $= Just Back
@@ -86,9 +96,53 @@ display appstate = do
   lookAt (Vertex3 0 0 (-25)) (Vertex3 0 0 0) (Vector3 0 1 0)
   scale (-1::GLfloat) 1 1  -- ^make right-hand left-handed
 
-  let drawC :: GLfloat -> GLfloat -> GLfloat -> IO ()
-      drawC x y z = preservingMatrix $ do
-                      translate $ Vector3 (-x) (-y) (-z)
+
+  -- Rotation
+  let Vector3 rx ry rz = appRotation appstate
+  putStrLn $ "rotation=" ++ (show $ appRotation appstate)
+  rotate (180 * ry) $ Vector3 1.0 0 0
+  rotate (180 * rx) $ Vector3 0 1.0 0
+  rotate (180 * rz) $ Vector3 0 0 1.0
+
+  -- Drawing
+  let cCoords :: Int -> Vector3 GLfloat
+      cCoords 1 = Vector3 4 0 1
+      cCoords 2 = Vector3 0 0 0
+      cCoords 3 = Vector3 (-4) 0 (-1)
+      cLeds :: Int -> [(String, (GLfloat, GLfloat, GLfloat))]
+      cLeds n = let ids = case n of
+                            1 -> ['A'..'E']
+                            2 -> ['F'..'J']
+                            3 -> ['K'..'O']
+                in [([fb, id], (x, y, z))
+                    | (fb, z) <- [('F', 0), ('B', 1)],
+                      (id, (x, y)) <- zip ids [(2.5, 0.5), (1.5, 0.5),
+                                               (1.5, 1.5),
+                                               (1.5, 2.5), (2.5, 2.5)]]
+      cLightColors :: Int -> [((GLfloat, GLfloat, GLfloat)  -- ^light coordinates
+                              ,Color                        -- ^light color
+                              )]
+      cLightColors n = map (\(ledid, coords) ->
+                                let color = I.colorFor ledid $ appInterpreter appstate
+                                in (coords, color)
+                           ) $ cLeds n
+      colorAt :: Int -> GLfloat -> GLfloat -> GLfloat -> GL.Color3 GLfloat
+      colorAt n x y z = let nearLights :: [(GLfloat, Color)]
+                            nearLights = map (\((lx, ly, lz), color) ->
+                                                  let distance = sqrt ((x - lx) ** 2 +
+                                                                       (y - ly) ** 2 +
+                                                                       (z - lz))
+                                                      nearness = 1 / distance
+                                                  in (nearness, color)
+                                             ) $ cLightColors n
+                            totalNearness = sum $ map fst nearLights
+                        in colorToGL $
+                           foldl (\color' (nearness, color) ->
+                                      mix (realToFrac $ nearness / totalNearness) color color'
+                                 ) black nearLights
+      drawC :: Int -> IO ()
+      drawC n = preservingMatrix $ do
+                      translate $ cCoords n
                       runReaderT (do cube 2 2 0 1 1 1
                                      cube 1 2 0 1 1 1
                                      cube 0 2 0 1 1 1
@@ -96,19 +150,10 @@ display appstate = do
                                      cube 0 0 0 1 1 1
                                      cube 0 (-1) 0 1 1 1
                                      cube 1 (-1) 0 1 1 1
-                                     cube 2 (-1) 0 1 1 1) colorAt
-      colorAt _ _ _ = Color3 (1::GLfloat) 1 1
-      Vector3 rx ry rz = appRotation appstate
-  putStrLn $ "rotation=" ++ (show $ appRotation appstate)
-  rotate (180 * ry) $ Vector3 1.0 0 0
-  rotate (180 * rx) $ Vector3 0 1.0 0
-  rotate (180 * rz) $ Vector3 0 0 1.0
-  -- 1st C
-  drawC (-4) 0 (-1)
-  -- 2nd C
-  drawC 0 0 0
-  -- 3rd C
-  drawC 4 0 1
+                                     cube 2 (-1) 0 1 1 1) (colorAt n)
+  forM [1..3] drawC
+
+  -- Done
   flush
   swapBuffers
 

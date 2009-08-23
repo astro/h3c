@@ -1,4 +1,4 @@
-module Interpreter (Interpreter, new, update) where
+module Interpreter (Interpreter, new, update, colorFor) where
 
 import System.Time
 import Script
@@ -43,6 +43,9 @@ step i = let i' = i { iLastUpdate = iLastUpdate i + 10,
                   | otherwise -> i' { iRemaining = (W $ duration - 10):(iRemaining i') }
               C led color ->
                   i' { iLEDs = LEDs.light (iLEDs i') led color }
+
+colorFor :: LEDs.LEDID -> Interpreter -> Color
+colorFor led i = LEDs.getColor led $ iLEDs i
 
 
 -- |Get time in milliseconds
