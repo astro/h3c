@@ -82,8 +82,9 @@ display appstate = do
   cullFace $= Just Back
   depthFunc $= Just Less
   shadeModel $= Smooth
-  hint PerspectiveCorrection $= Nicest
+  {-hint PerspectiveCorrection $= Nicest-}
   hint PolygonSmooth $= Nicest
+  polygonSmooth $= Enabled
 
   matrixMode $= Projection
   loadIdentity
@@ -93,29 +94,27 @@ display appstate = do
 
   matrixMode $= Modelview 0
   loadIdentity
-  lookAt (Vertex3 0 0 (-25)) (Vertex3 0 0 0) (Vector3 0 1 0)
-  scale (-1::GLfloat) 1 1  -- ^make right-hand left-handed
+  lookAt (Vertex3 0 0 20) (Vertex3 0 0 0) (Vector3 0 1 0)
 
 
   -- Rotation
   let Vector3 rx ry rz = appRotation appstate
-  putStrLn $ "rotation=" ++ (show $ appRotation appstate)
   rotate (180 * ry) $ Vector3 1.0 0 0
   rotate (180 * rx) $ Vector3 0 1.0 0
   rotate (180 * rz) $ Vector3 0 0 1.0
 
   -- Drawing
   let cCoords :: Int -> Vector3 GLfloat
-      cCoords 1 = Vector3 4 0 1
+      cCoords 1 = Vector3 (-4) 0 1
       cCoords 2 = Vector3 0 0 0
-      cCoords 3 = Vector3 (-4) 0 (-1)
+      cCoords 3 = Vector3 4 0 (-1)
       cLeds :: Int -> [(String, (GLfloat, GLfloat, GLfloat))]
       cLeds n = let ids = case n of
                             1 -> ['A'..'E']
                             2 -> ['F'..'J']
                             3 -> ['K'..'O']
                 in [([fb, id], (x, y, z))
-                    | (fb, z) <- [('F', 0), ('B', 1)],
+                    | (fb, z) <- [('F', 0), ('B', (-1))],
                       (id, (x, y)) <- zip ids [(2.5, 0.5), (1.5, 0.5),
                                                (1.5, 1.5),
                                                (1.5, 2.5), (2.5, 2.5)]]

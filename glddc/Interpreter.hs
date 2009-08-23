@@ -20,8 +20,6 @@ new path = do commands <- parse path
 
 update :: Interpreter -> IO Interpreter
 update i = do now <- getTimeStep
-              putStrLn $ "from " ++ (show $ iLastUpdate i) ++ " to " ++ (show now) ++ " diff: " ++ (show $ now - iLastUpdate i)
-              putStrLn $ (show $ length $ iRemaining i) ++ " remaining"
               return $
                      case iRemaining i of
                        [] ->
