@@ -6,7 +6,8 @@ import Color
 
 data LEDState = Lit Color
 
-type LEDs = Map String LEDState
+type LEDID = String
+type LEDs = Map LEDID LEDState
 
 new :: LEDs
 new = empty
@@ -20,6 +21,8 @@ light leds ledid color
                  light leds' ledid' color
             ) leds $ normalizeLEDs ledid
 
-normalizeLEDs :: String -> [String]
+normalizeLEDs :: LEDID -> [LEDID]
+normalizeLEDs ledid@[fb, _] | fb == 'F' || fb == 'B' = [ledid]
 normalizeLEDs [ledid] = [['F', ledid], ['B', ledid]]
-normalizeLEDs 
+normalizeLEDs "ALL" = concat $ map normalizeLEDs $ map (:[]) ['A'..'O']
+normalizeLEDs (fb:"ALL") | fb == 'F' || fb == 'B' = concat $ map normalizeLEDs $ map (fb::[]) ['A'..'O']

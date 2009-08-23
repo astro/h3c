@@ -35,13 +35,13 @@ line = do many whitespace
 
 color = do char 'C'
            many whitespace
-           led <- many alphaNum
+           led <- many1 $ oneOf "0123456789ABCDEFGHIJKLMNOPQR"
            many whitespace
            c <- colorSpec
            return $ C led c
     where colorSpec :: GenParser Char st Color
           colorSpec = parseColor `liftM`
-                      many (oneOf "#0123456789abcdefABCDEF")
+                      many1 (oneOf "#0123456789abcdefABCDEF")
 
 wait = do char 'W'
           many whitespace
