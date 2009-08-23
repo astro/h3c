@@ -12,7 +12,7 @@ import Debug.Trace
 data AppState = AppState {
       appLastMousePosition :: Maybe Position,
       appRotating :: Bool,
-      appRotation :: Vector3 GLfloat,
+      appRotation :: Vector3 GLdouble,
       appInterpreter :: I.Interpreter
     }
 
@@ -29,9 +29,9 @@ instance AppFun AppState (IO AppState) where
                               writeIORef appstateRef appstate'
 
 
-cube :: GLfloat -> GLfloat -> GLfloat
-     -> GLfloat -> GLfloat -> GLfloat
-     -> ReaderT (GLfloat -> GLfloat -> GLfloat -> Color3 GLfloat) IO ()
+cube :: GLdouble -> GLdouble -> GLdouble
+     -> GLdouble -> GLdouble -> GLdouble
+     -> ReaderT (GLdouble -> GLdouble -> GLdouble -> Color3 GLdouble) IO ()
 cube x y z w h d = do
   colorAt <- ask
   let v x y z = do color $ colorAt x y z
@@ -69,7 +69,7 @@ cube x y z w h d = do
                      v (x + w) (y + h) (z + d)
                      v (x + w) (y + h) z
 
-colorToGL :: Color -> GL.Color3 GLfloat
+colorToGL :: Color -> GL.Color3 GLdouble
 colorToGL (Color r g b)
     = let r' = realToFrac r
           g' = realToFrac g
@@ -106,11 +106,11 @@ display appstate = do
   rotate (180 * rz) $ Vector3 0 0 1.0
 
   -- Drawing
-  let cCoords :: Int -> Vector3 GLfloat
+  let cCoords :: Int -> Vector3 GLdouble
       cCoords 1 = Vector3 (-4) 0 1
       cCoords 2 = Vector3 0 0 0
       cCoords 3 = Vector3 4 0 (-1)
-      cLeds :: Int -> [(String, (GLfloat, GLfloat, GLfloat))]
+      cLeds :: Int -> [(String, (GLdouble, GLdouble, GLdouble))]
       cLeds n = let ids = case n of
                             1 -> ['A'..'E']
                             2 -> ['F'..'J']
@@ -120,15 +120,15 @@ display appstate = do
                       (id, (x, y)) <- zip ids [(2.5, (-0.5)), (0.5, (-0.5)),
                                                (0.5, 1.0),
                                                (0.5, 2.5), (2.5, 2.5)]]
-      cLightColors :: Int -> [((GLfloat, GLfloat, GLfloat)  -- ^light coordinates
+      cLightColors :: Int -> [((GLdouble, GLdouble, GLdouble)  -- ^light coordinates
                               ,Color                        -- ^light color
                               )]
       cLightColors n = map (\(ledid, coords) ->
                                 let color = I.colorFor ledid $ appInterpreter appstate
                                 in (coords, color)
                            ) $ cLeds n
-      colorAt :: Int -> GLfloat -> GLfloat -> GLfloat -> GL.Color3 GLfloat
-      colorAt n x y z = let nearLights :: [(GLfloat, Color)]
+      colorAt :: Int -> GLdouble -> GLdouble -> GLdouble -> GL.Color3 GLdouble
+      colorAt n x y z = let nearLights :: [(GLdouble, Color)]
                             nearLights = map (\((lx, ly, lz), color) ->
                                                   let distance = sqrt ((x - lx) ** 2 +
                                                                        (y - ly) ** 2 +
