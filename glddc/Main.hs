@@ -3,11 +3,14 @@
 import Graphics.Rendering.OpenGL
 import Graphics.UI.GLUT
 import Data.IORef
+import Control.Monad.Reader
+import qualified Interpreter as I
 
 data AppState = AppState {
       appLastMousePosition :: Maybe Position,
       appRotating :: Bool,
-      appRotation :: Vector3 GLfloat
+      appRotation :: Vector3 GLfloat,
+      appInterpreter :: I.Interpreter
     }
 
 class AppFun a r where
@@ -25,46 +28,42 @@ instance AppFun AppState (IO AppState) where
 
 cube :: GLfloat -> GLfloat -> GLfloat
      -> GLfloat -> GLfloat -> GLfloat
-     -> IO ()
+     -> ReaderT (GLfloat -> GLfloat -> GLfloat -> Color3 GLfloat) IO ()
 cube x y z w h d = do
-  renderPrimitive Quads $ do
+  colorAt <- ask
+  let v x y z = do color $ colorAt x y z
+                   vertex (Vertex3 x y z)
+  lift $ renderPrimitive Quads $ do
                      -- Front
-                     color (Color3 (1::GLfloat) 1 1)
-                     vertex (Vertex3 x y z)
-                     vertex (Vertex3 (x + w) y z)
-                     vertex (Vertex3 (x + w) (y + h) z)
-                     vertex (Vertex3 x (y + h) z)
+                     v x y z
+                     v (x + w) y z
+                     v (x + w) (y + h) z
+                     v x (y + h) z
                      -- Back
-                     color (Color3 (1::GLfloat) 0 0)
-                     vertex (Vertex3 x y (z + d))
-                     vertex (Vertex3 x (y + h) (z + d))
-                     vertex (Vertex3 (x + w) (y + h) (z + d))
-                     vertex (Vertex3 (x + w) y (z + d))
+                     v x y (z + d)
+                     v x (y + h) (z + d)
+                     v (x + w) (y + h) (z + d)
+                     v (x + w) y (z + d)
                      -- Top
-                     color (Color3 (0::GLfloat) 1 0)
-                     vertex (Vertex3 x (y + h) z)
-                     vertex (Vertex3 (x + w) (y + h) z)
-                     vertex (Vertex3 (x + w) (y + h) (z + d))
-                     vertex (Vertex3 x (y + h) (z + d))
+                     v x (y + h) z
+                     v (x + w) (y + h) z
+                     v (x + w) (y + h) (z + d)
+                     v x (y + h) (z + d)
                      -- Bottom
-                     color (Color3 (0::GLfloat) 0 1)
-                     vertex (Vertex3 x y z)
-                     vertex (Vertex3 x y (z + d))
-                     vertex (Vertex3 (x + w) y (z + d))
-                     vertex (Vertex3 (x + w) y z)
+                     v x y z
+                     v x y (z + d)
+                     v (x + w) y (z + d)
+                     v (x + w) y z
                      -- Left
-                     color (Color3 (1::GLfloat) 1 0)
-                     vertex (Vertex3 x y z)
-                     vertex (Vertex3 x (y + h) z)
-                     vertex (Vertex3 x (y + h) (z + d))
-                     vertex (Vertex3 x y (z + d))
+                     v x y z
+                     v x (y + h) z
+                     v x (y + h) (z + d)
+                     v x y (z + d)
                      -- Right
-                     color (Color3 (1::GLfloat) 0 1)
-                     vertex (Vertex3 (x + w) y z)
-                     vertex (Vertex3 (x + w) y (z + d))
-                     vertex (Vertex3 (x + w) (y + h) (z + d))
-                     vertex (Vertex3 (x + w) (y + h) z)
-                     
+                     v (x + w) y z
+                     v (x + w) y (z + d)
+                     v (x + w) (y + h) (z + d)
+                     v (x + w) (y + h) z
 
 display :: AppState -> IO ()
 display appstate = do
@@ -90,14 +89,15 @@ display appstate = do
   let drawC :: GLfloat -> GLfloat -> GLfloat -> IO ()
       drawC x y z = preservingMatrix $ do
                       translate $ Vector3 (-x) (-y) (-z)
-                      cube 2 2 0 1 1 1
-                      cube 1 2 0 1 1 1
-                      cube 0 2 0 1 1 1
-                      cube 0 1 0 1 1 1
-                      cube 0 0 0 1 1 1
-                      cube 0 (-1) 0 1 1 1
-                      cube 1 (-1) 0 1 1 1
-                      cube 2 (-1) 0 1 1 1
+                      runReaderT (do cube 2 2 0 1 1 1
+                                     cube 1 2 0 1 1 1
+                                     cube 0 2 0 1 1 1
+                                     cube 0 1 0 1 1 1
+                                     cube 0 0 0 1 1 1
+                                     cube 0 (-1) 0 1 1 1
+                                     cube 1 (-1) 0 1 1 1
+                                     cube 2 (-1) 0 1 1 1) colorAt
+      colorAt _ _ _ = Color3 (1::GLfloat) 1 1
       Vector3 rx ry rz = appRotation appstate
   putStrLn $ "rotation=" ++ (show $ appRotation appstate)
   rotate (180 * ry) $ Vector3 1.0 0 0
@@ -111,6 +111,12 @@ display appstate = do
   drawC 4 0 1
   flush
   swapBuffers
+
+update :: AppState -> IO AppState
+update appstate = do
+  i <- I.update $ appInterpreter appstate
+  postRedisplay Nothing
+  return appstate { appInterpreter = i }
 
 reshape :: Size -> IO ()
 reshape s = do
@@ -143,13 +149,20 @@ keyboardMouse _ _ modifiers pos appstate
     = return appstate
 
 main = do 
-  (progname, _) <- getArgsAndInitialize
+  (progname, args) <- getArgsAndInitialize
+  case args of
+    [scriptfile] -> run scriptfile
+    _ -> putStrLn $ "Usage: " ++ progname ++ " <animation.ddc>"
+
+run scriptfile = do
+  i <- I.new scriptfile
   initialDisplayMode $= [DoubleBuffered, WithDepthBuffer]
 
   createWindow "Die Drei C"
   let appstate = AppState { appLastMousePosition = Nothing,
                             appRotating = False,
-                            appRotation = Vector3 0 0 0
+                            appRotation = Vector3 0 0 0,
+                            appInterpreter = i
                           }
   appstateRef <- newIORef appstate
 
@@ -157,4 +170,8 @@ main = do
   reshapeCallback $= Just reshape
   keyboardMouseCallback $= Just (\k ks m p -> appFun appstateRef $ keyboardMouse k ks m p)
   motionCallback $= Just (appFun appstateRef . mouseMotion)
+  let timer = addTimerCallback 10 $
+              do timer
+                 appFun appstateRef update
+  timer
   mainLoop
