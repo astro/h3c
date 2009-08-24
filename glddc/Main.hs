@@ -7,7 +7,6 @@ import Data.IORef
 import Control.Monad.Reader
 import qualified Interpreter as I
 import Color (mix, black, Color(Color))
-import Debug.Trace
 
 data AppState = AppState {
       appLastMousePosition :: Maybe Position,
@@ -35,7 +34,6 @@ cube :: GLdouble -> GLdouble -> GLdouble
 cube x y z w h d = do
   colorAt <- ask
   let v x y z = do color $ colorAt x y z
-                   putStrLn $ "v " ++ (show (x,y,z))
                    vertex (Vertex3 x y z)
   lift $ renderPrimitive Quads $ do
                      -- Front
@@ -137,17 +135,9 @@ display appstate = do
                                                   in (nearness, color)
                                              ) $ cLightColors n
                             totalNearness = sum $ map fst nearLights
-                        in ("totalNearness = " ++ (show totalNearness)) `trace` colorToGL $
+                        in colorToGL $
                            foldl (\color' (nearness, color) ->
-                                      ("mix " ++
-                                       (show $ realToFrac $ nearness / totalNearness) ++
-                                       " " ++
-                                       (show color) ++
-                                       " " ++
-                                       (show color') ++
-                                       " = " ++
-                                       (show $ mix (realToFrac $ nearness / totalNearness) color color')) `trace`
-                                         mix (realToFrac $ nearness / totalNearness) color color'
+                                      mix (realToFrac $ nearness / totalNearness) color color'
                                  ) black nearLights
       drawC :: Int -> IO ()
       drawC n = preservingMatrix $ do

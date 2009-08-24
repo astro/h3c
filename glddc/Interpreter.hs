@@ -30,9 +30,7 @@ update i = do now <- getTimeStep
                             | iRemaining i' == [] = i'
                             | iLastUpdate i' < now = catchUp $ step i'
                             | otherwise = i'
-                    in do let i' = catchUp i
-                          putStrLn $ "i': " ++ (show $ iLEDs i')
-                          return i'
+                    in return $ catchUp i
 
 step :: Interpreter -> Interpreter
 step i = let i' = i { iLastUpdate = iLastUpdate i + 10,

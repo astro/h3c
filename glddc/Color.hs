@@ -2,7 +2,6 @@ module Color (Color(Color), black, clamp, mix, parseColor) where
 
 import Text.Printf
 import Data.Char (ord)
-import Debug.Trace
 
 data Color = Color Double Double Double
     deriving (Eq)
