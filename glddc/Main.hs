@@ -173,8 +173,8 @@ mouseMotion pos@(Position x y) appstate
     | appRotating appstate == True = do Size w h <- get windowSize
                                         let Just (Position x' y') = appLastMousePosition appstate
                                             Vector3 rx ry rz = appRotation appstate
-                                            rx' = rx + fromIntegral (x' - x) / fromIntegral w
-                                            ry' = ry + fromIntegral (y' - y) / fromIntegral h
+                                            rx' = rx + fromIntegral (x - x') / fromIntegral w
+                                            ry' = ry + fromIntegral (y - y') / fromIntegral h
                                             rotation' = Vector3 rx' ry' rz
                                         postRedisplay Nothing
                                         return appstate { appLastMousePosition = Just pos,
