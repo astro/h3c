@@ -1,9 +1,12 @@
 module Interpreter (Interpreter, new, update, colorFor) where
 
 import System.Time
+import Control.Monad
 import Script
 import Command
 import Color
+import IO (openFile, hGetContents, IOMode(ReadMode))
+
 import qualified LEDs
 
 data Interpreter = Interpreter { iScript :: [Command],
@@ -12,12 +15,16 @@ data Interpreter = Interpreter { iScript :: [Command],
                                  iLEDs :: LEDs.LEDs }
                    deriving (Show, Eq)
 
-new :: FilePath -> IO Interpreter
-new path = do commands <- parse path
-              return Interpreter { iScript = commands,
-                                   iRemaining = [],
-                                   iLastUpdate = 0,
-                                   iLEDs = LEDs.new }
+new :: [FilePath] -> IO Interpreter
+new paths = do script <- concat `liftM`
+                         mapM (\path ->
+                                   openFile path ReadMode >>= hGetContents
+                              ) paths
+               commands <- parse script
+               return Interpreter { iScript = commands,
+                                    iRemaining = [],
+                                    iLastUpdate = 0,
+                                    iLEDs = LEDs.new }
 
 update :: Interpreter -> IO Interpreter
 update i = do now <- getTimeStep

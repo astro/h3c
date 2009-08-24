@@ -195,11 +195,11 @@ keyboardMouse _ _ modifiers pos appstate
 main = do 
   (progname, args) <- getArgsAndInitialize
   case args of
-    [scriptfile] -> run scriptfile
-    _ -> putStrLn $ "Usage: " ++ progname ++ " <animation.ddc>"
+    [] -> putStrLn $ "Usage: " ++ progname ++ " <animation.ddc>"
+    scriptfiles -> run scriptfiles
 
-run scriptfile = do
-  i <- I.new scriptfile
+run scriptfiles = do
+  i <- I.new scriptfiles
   initialDisplayMode $= [DoubleBuffered, WithDepthBuffer]
 
   createWindow "Die Drei C"

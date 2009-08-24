@@ -6,11 +6,10 @@ import Control.Monad
 import Color
 import Command
 
-parse :: FilePath -> IO [Command]
-parse path = do r <- parseFromFile script path
-                case r of
-                  Right commands -> return commands
-                  Left e -> error $ show e
+parse :: String -> IO [Command]
+parse s = do case Parsec.parse script "" s of
+               Right commands -> return commands
+               Left e -> error $ show e
 
 script :: GenParser Char st [Command]
 script = do commands <- (map (\(Just command) -> command) .
