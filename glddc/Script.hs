@@ -22,6 +22,8 @@ script = do commands <- (map (\(Just command) -> command) .
 line = do many whitespace
           r <- (Just `liftM` color
                 <|>
+                Just `liftM` fade
+                <|>
                 Just `liftM` wait
                 <|>
                 do comment
@@ -35,17 +37,23 @@ line = do many whitespace
 
 color = do char 'C'
            many whitespace
-           led <- many1 $ oneOf "0123456789ABCDEFGHIJKLMNOPQR"
+           led <- ledSpec
            many whitespace
            c <- colorSpec
            return $ C led c
-    where colorSpec :: GenParser Char st Color
-          colorSpec = parseColor `liftM`
-                      many1 (oneOf "#0123456789abcdefABCDEF")
+
+fade = do char 'F'
+          many whitespace
+          led <- ledSpec
+          many whitespace
+          c <- colorSpec
+          many whitespace
+          speed <- read `liftM` many1 digit
+          return $ F led c speed
 
 wait = do char 'W'
           many whitespace
-          duration <- read `liftM` many digit
+          duration <- read `liftM` many1 digit
           return $ W duration
 
 comment = do (char '#'
@@ -53,6 +61,12 @@ comment = do (char '#'
               char '/')
              manyTill anyChar eol
 
+
+colorSpec :: GenParser Char st Color
+colorSpec = parseColor `liftM`
+            many1 (oneOf "#0123456789abcdefABCDEF")
+
+ledSpec = many1 $ oneOf "0123456789ABCDEFGHIJKLMNOPQR"
 
 whitespace = oneOf " \t\r"
 

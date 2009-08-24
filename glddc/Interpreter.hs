@@ -33,17 +33,21 @@ update i = do now <- getTimeStep
                     in return $ catchUp i
 
 step :: Interpreter -> Interpreter
-step i = let i' = i { iLastUpdate = iLastUpdate i + 10,
+step i = let i' = i { iLastUpdate = time,
                       iRemaining = tail $ iRemaining i }
+             time = iLastUpdate i + 10
          in case head $ iRemaining i of
               W duration
                   | duration <= 10 -> i'
                   | otherwise -> i' { iRemaining = (W $ duration - 10):(iRemaining i') }
               C led color ->
                   i' { iLEDs = LEDs.light (iLEDs i') led color }
+              F led color speed ->
+                  let duration = truncate $ (1.0 / fromIntegral speed * 117 * 1000 :: Double)
+                  in i' { iLEDs = LEDs.fade (iLEDs i') led color time (time + duration) }
 
 colorFor :: LEDs.LEDID -> Interpreter -> Color
-colorFor led i = LEDs.getColor led $ iLEDs i
+colorFor led i = LEDs.getColor led (iLEDs i) (iLastUpdate i)
 
 
 -- |Get time in milliseconds
