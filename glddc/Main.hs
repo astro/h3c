@@ -12,6 +12,7 @@ data AppState = AppState {
       appLastMousePosition :: Maybe Position,
       appRotating :: Bool,
       appRotation :: Vector3 GLdouble,
+      appZoom :: GLdouble,
       appInterpreter :: I.Interpreter
     }
 
@@ -94,7 +95,7 @@ display appstate = do
 
   matrixMode $= Modelview 0
   loadIdentity
-  lookAt (Vertex3 0 0 20) (Vertex3 0 0 0) (Vector3 0 1 0)
+  lookAt (Vertex3 0 0 $ appZoom appstate) (Vertex3 0 0 0) (Vector3 0 1 0)
 
 
   -- Rotation
@@ -189,7 +190,15 @@ keyboardMouse (MouseButton LeftButton) Up modifiers pos appstate
     = return appstate { appRotating = False,
                         appLastMousePosition = Nothing
                       }
-keyboardMouse _ _ modifiers pos appstate
+keyboardMouse (MouseButton button) Down modifiers pos appstate
+    | button == WheelUp = zoom (-1)
+    | button == WheelDown = zoom 1
+    where zoom increment
+              = return appstate { appZoom = clip 10 50 $ appZoom appstate + increment }
+          clip min max x | x < min = min
+                         | x > max = max
+                         | otherwise = x
+keyboardMouse b s modifiers pos appstate
     = return appstate
 
 main = do 
@@ -206,6 +215,7 @@ run scriptfiles = do
   let appstate = AppState { appLastMousePosition = Nothing,
                             appRotating = False,
                             appRotation = Vector3 0 0 0,
+                            appZoom = 25,
                             appInterpreter = i
                           }
   appstateRef <- newIORef appstate
